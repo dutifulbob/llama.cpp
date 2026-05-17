@@ -297,8 +297,8 @@ void llama_model_gemma4_assistant::load_arch_tensors(llama_model_loader &) {
         if (n_centroids == 0) {
             throw std::runtime_error("gemma4-assistant: use_ordered_embeddings is set but num_centroids is 0");
         }
-        assist_embed_centroids = create_tensor(tn(LLM_TENSOR_ASSIST_EMBED_CENTROIDS, "weight"), {n_embd, n_centroids}, 0);
-        assist_token_ordering  = create_tensor(tn(LLM_TENSOR_ASSIST_TOKEN_ORDERING,  "weight"), {n_vocab}, 0);
+        assist_embed_centroids = create_tensor(tn(LLM_TENSOR_ASSIST_EMBED_CENTROIDS), {n_embd, n_centroids}, 0);
+        assist_token_ordering  = create_tensor(tn(LLM_TENSOR_ASSIST_TOKEN_ORDERING),  {n_vocab}, 0);
     }
 
     int rope_freqs_flag = 0;

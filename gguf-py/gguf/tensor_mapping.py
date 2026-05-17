@@ -177,6 +177,7 @@ class TensorNameMap:
             "post_projection",                  # gemma4_assistant
         ),
         MODEL_TENSOR.ASSIST_EMBED_CENTROIDS: (
+            "masked_embedding.centroids.weight",# gemma4_assistant
             "masked_embedding.centroids",       # gemma4_assistant
         ),
         MODEL_TENSOR.ASSIST_TOKEN_ORDERING: (

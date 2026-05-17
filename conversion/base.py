@@ -794,7 +794,7 @@ class ModelBase:
             old_dtype = data_torch.dtype
 
             # convert any unsupported data types to float32
-            if data_torch.dtype not in (torch.float16, torch.float32):
+            if data_torch.dtype not in (torch.float16, torch.float32, torch.int32, torch.int64):
                 data_torch = data_torch.to(torch.float32)
 
             # use the first number-like part of the tensor name as the block id
@@ -813,7 +813,7 @@ class ModelBase:
                 data_qtype: gguf.GGMLQuantizationType | bool = self.tensor_force_quant(name, new_name, bid, n_dims)
 
                 # Most of the codebase that takes in 1D tensors or norms only handles F32 tensors
-                if n_dims <= 1 or new_name.endswith("_norm.weight"):
+                if data_qtype is False and (n_dims <= 1 or new_name.endswith("_norm.weight")):
                     data_qtype = gguf.GGMLQuantizationType.F32
 
                 # Conditions should closely match those in llama_model_quantize_internal in llama.cpp
@@ -885,12 +885,15 @@ class ModelBase:
                     else:
                         raise ValueError(f"Unknown file type: {self.ftype.name}")
 
-                try:
-                    data = gguf.quants.quantize(data, data_qtype)
-                except gguf.QuantError as e:
-                    logger.warning("%s, %s", e, "falling back to F16")
-                    data_qtype = gguf.GGMLQuantizationType.F16
-                    data = gguf.quants.quantize(data, data_qtype)
+                if data_qtype == gguf.GGMLQuantizationType.I32:
+                    data = data.astype(np.int32, copy=False)
+                else:
+                    try:
+                        data = gguf.quants.quantize(data, data_qtype)
+                    except gguf.QuantError as e:
+                        logger.warning("%s, %s", e, "falling back to F16")
+                        data_qtype = gguf.GGMLQuantizationType.F16
+                        data = gguf.quants.quantize(data, data_qtype)
 
                 shape = gguf.quant_shape_from_byte_shape(data.shape, data_qtype) if data.dtype == np.uint8 else data.shape
 
@@ -2339,6 +2342,8 @@ class LazyTorchTensor(gguf.LazyBase):
     _dtype_map: dict[torch.dtype, type] = {
         torch.float16: np.float16,
         torch.float32: np.float32,
+        torch.int64: np.int64,
+        torch.int32: np.int32,
         torch.uint8: np.uint8,
     }
 

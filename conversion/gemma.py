@@ -765,6 +765,31 @@ class Gemma4Model(Gemma3Model):
         yield from super().modify_tensors(data_torch, name, bid)
 
 
+@ModelBase.register("Gemma4AssistantForCausalLM")
+class Gemma4AssistantModel(Gemma4Model):
+    model_arch = gguf.MODEL_ARCH.GEMMA4_ASSISTANT
+
+    def set_gguf_parameters(self):
+        super().set_gguf_parameters()
+
+        self.gguf_writer.add_backbone_hidden_size(self.find_hparam(["backbone_hidden_size"]))
+        self.gguf_writer.add_assistant_num_centroids(self.find_hparam(["num_centroids"]))
+        self.gguf_writer.add_assistant_centroid_top_k(self.find_hparam(["centroid_intermediate_top_k"]))
+        self.gguf_writer.add_assistant_use_ordered_embeddings(self.hparams.get("use_ordered_embeddings", False))
+
+    def modify_tensors(self, data_torch: Tensor, name: str, bid: int | None) -> Iterable[tuple[str, Tensor]]:
+        for new_name, data_torch in super().modify_tensors(data_torch, name, bid):
+            if self.match_model_tensor_name(new_name, gguf.MODEL_TENSOR.ASSIST_TOKEN_ORDERING, None, ""):
+                data_torch = data_torch.to(torch.int32)
+            yield (new_name, data_torch)
+
+    def tensor_force_quant(self, name: str, new_name: str, bid: int | None, n_dims: int) -> gguf.GGMLQuantizationType | bool:
+        if self.match_model_tensor_name(new_name, gguf.MODEL_TENSOR.ASSIST_TOKEN_ORDERING, None, ""):
+            return gguf.GGMLQuantizationType.I32
+
+        return super().tensor_force_quant(name, new_name, bid, n_dims)
+
+
 @ModelBase.register("Gemma4ForConditionalGeneration")
 class Gemma4VisionAudioModel(MmprojModel):
     has_audio_encoder = True
